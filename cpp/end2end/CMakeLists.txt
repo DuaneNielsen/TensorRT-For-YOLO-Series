@@ -8,6 +8,7 @@ option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 # add_definitions("-Wall -g")
+# find_package(CUDA 11.6 REQUIRED)
 find_package(CUDA REQUIRED)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)

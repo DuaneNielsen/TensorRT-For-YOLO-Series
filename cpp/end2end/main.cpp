@@ -131,7 +131,7 @@ float* Yolo::blobFromImage(cv::Mat& img) {
   for (size_t c = 0; c < channels; c++) {
     for (size_t h = 0; h < img_h; h++) {
       for (size_t w = 0; w < img_w; w++) {
-        blob[c * img_w * img_h + h * img_w + w] = (float)img.at<cv::Vec3b>(h, w)[c] / 255.0;
+        blob[c * img_w * img_h + h * img_w + w] = (float)img.at<cv::Vec3b>(h, w)[c];
       }
     }
   }
@@ -139,6 +139,7 @@ float* Yolo::blobFromImage(cv::Mat& img) {
 }
 
 void Yolo::draw_objects(const cv::Mat& img, float* Boxes, int* ClassIndexs, int* BboxNum) {
+  std::cout << "Yolo::draw_objects BboxNum:" << BboxNum[0] << std::endl;
   for (int j = 0; j < BboxNum[0]; j++) {
     cv::Rect rect(Boxes[j * 4], Boxes[j * 4 + 1], Boxes[j * 4 + 2], Boxes[j * 4 + 3]);
     cv::rectangle(img, rect, cv::Scalar(0x27, 0xC1, 0x36), 2);
@@ -152,6 +153,7 @@ void Yolo::draw_objects(const cv::Mat& img, float* Boxes, int* ClassIndexs, int*
         2);
     cv::imwrite("result.jpg", img);
   }
+  std::cout << "Yolo:draw_objects return" << std::endl;
 }
 
 Yolo::Yolo(char* model_path) {
@@ -173,29 +175,29 @@ Yolo::Yolo(char* model_path) {
   runtime = nvinfer1::createInferRuntime(gLogger);
   initLibNvInferPlugins(&gLogger, "");
   engine = runtime->deserializeCudaEngine((void*)&buf[0], mdsize, nullptr);
-  auto in_dims = engine->getBindingDimensions(engine->getBindingIndex("image_arrays"));
+  auto in_dims = engine->getBindingDimensions(engine->getBindingIndex("images"));
   iH = in_dims.d[2];
   iW = in_dims.d[3];
   in_size = 1;
   for (int j = 0; j < in_dims.nbDims; j++) {
     in_size *= in_dims.d[j];
   }
-  auto out_dims1 = engine->getBindingDimensions(engine->getBindingIndex("num"));
+  auto out_dims1 = engine->getBindingDimensions(engine->getBindingIndex("num_dets"));
   out_size1 = 1;
   for (int j = 0; j < out_dims1.nbDims; j++) {
     out_size1 *= out_dims1.d[j];
   }
-  auto out_dims2 = engine->getBindingDimensions(engine->getBindingIndex("boxes"));
+  auto out_dims2 = engine->getBindingDimensions(engine->getBindingIndex("det_boxes"));
   out_size2 = 1;
   for (int j = 0; j < out_dims2.nbDims; j++) {
     out_size2 *= out_dims2.d[j];
   }
-  auto out_dims3 = engine->getBindingDimensions(engine->getBindingIndex("scores"));
+  auto out_dims3 = engine->getBindingDimensions(engine->getBindingIndex("det_scores"));
   out_size3 = 1;
   for (int j = 0; j < out_dims3.nbDims; j++) {
     out_size3 *= out_dims3.d[j];
   }
-  auto out_dims4 = engine->getBindingDimensions(engine->getBindingIndex("classes"));
+  auto out_dims4 = engine->getBindingDimensions(engine->getBindingIndex("det_classes"));
   out_size4 = 1;
   for (int j = 0; j < out_dims4.nbDims; j++) {
     out_size4 *= out_dims4.d[j];
@@ -254,7 +256,10 @@ void Yolo::Infer(
   cv::Mat img(aHeight, aWidth, CV_MAKETYPE(CV_8U, aChannel), aBytes);
   cv::Mat pr_img;
   float scale = letterbox(img, pr_img, {iW, iH}, 32, {114, 114, 114}, true);
-  cv::cvtColor(pr_img, pr_img, cv::COLOR_BGR2RGB);
+  // cv::cvtColor(pr_img, pr_img, cv::COLOR_BGR2RGB);
+  // cv::imshow("preprocessed image", pr_img);
+  // cv::waitKey(0);
+  cv::imwrite("input.jpg", pr_img);
   float* blob = blobFromImage(pr_img);
 
   static int* num_dets = new int[out_size1];
